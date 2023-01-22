@@ -1274,20 +1274,18 @@ _main:
 	__GETWRN 20,21,0
 	LDI  R30,LOW(255)
 	OUT  0x14,R30
-; 0000 001F     PORTC=0XFF;
-	OUT  0x15,R30
-; 0000 0020     DDRB=0X00;
+; 0000 001F     DDRB=0X00;
 	LDI  R30,LOW(0)
 	OUT  0x17,R30
-; 0000 0021 
-; 0000 0022     lcd_init(16);
+; 0000 0020 
+; 0000 0021     lcd_init(16);
 	LDI  R26,LOW(16)
 	RCALL _lcd_init
-; 0000 0023 
-; 0000 0024     while (1)
+; 0000 0022 
+; 0000 0023     while (1)
 _0x3:
-; 0000 0025     {
-; 0000 0026         status=read_dht11(&temp,&humidity);
+; 0000 0024     {
+; 0000 0025         status=read_dht11(&temp,&humidity);
 	IN   R30,SPL
 	IN   R31,SPH
 	SBIW R30,1
@@ -1306,7 +1304,7 @@ _0x3:
 	POP  R16
 	POP  R17
 	MOVW R20,R30
-; 0000 0027         sprintf(lcd_buff,"T:%02d\t\tset(T):%02d\r\nH:%02d\t\tset(H):%02d" , temp , valtemp , humidity , valhumidity);
+; 0000 0026         sprintf(lcd_buff,"T:%02d\t\tset(T):%02d\r\nH:%02d\t\tset(H):%02d" , temp , valtemp , humidity , valhumidity);
 	MOVW R30,R28
 	ADIW R30,4
 	ST   -Y,R31
@@ -1327,25 +1325,27 @@ _0x3:
 	LDI  R24,16
 	CALL _sprintf
 	ADIW R28,20
-; 0000 0028         lcd_clear();
+; 0000 0027         lcd_clear();
 	RCALL _lcd_clear
-; 0000 0029         lcd_puts(lcd_buff);
+; 0000 0028         lcd_puts(lcd_buff);
 	MOVW R26,R28
 	ADIW R26,4
 	RCALL _lcd_puts
-; 0000 002A         delay_ms(1);
+; 0000 0029         delay_ms(1);
 	LDI  R26,LOW(1)
 	LDI  R27,0
 	CALL _delay_ms
-; 0000 002B         lcd_gotoxy(0,1);
+; 0000 002A         lcd_gotoxy(0,1);
 	LDI  R30,LOW(0)
 	ST   -Y,R30
 	LDI  R26,LOW(1)
 	RCALL _lcd_gotoxy
-; 0000 002C         if (PINB.0==1)
+; 0000 002B         if (PINB.0==1)
 	SBIS 0x16,0
 	RJMP _0x6
-; 0000 002D         {
+; 0000 002C         {
+; 0000 002D             delay_ms(200);
+	CALL SUBOPT_0x2
 ; 0000 002E             valtemp++;
 	LDD  R30,Y+2
 	LDD  R31,Y+2+1
@@ -1370,73 +1370,140 @@ _0x6:
 	SBIS 0x16,1
 	RJMP _0x8
 ; 0000 0035         {
-; 0000 0036             valhumidity++;
+; 0000 0036             delay_ms(200);
+	CALL SUBOPT_0x2
+; 0000 0037             valhumidity++;
 	LD   R30,Y
 	LDD  R31,Y+1
 	ADIW R30,1
 	ST   Y,R30
 	STD  Y+1,R31
-; 0000 0037             if (valhumidity==70)
+; 0000 0038             if (valhumidity==70)
 	LD   R26,Y
 	LDD  R27,Y+1
 	CPI  R26,LOW(0x46)
 	LDI  R30,HIGH(0x46)
 	CPC  R27,R30
 	BRNE _0x9
-; 0000 0038             {
-; 0000 0039                 valhumidity=0;
+; 0000 0039             {
+; 0000 003A                 valhumidity=0;
 	LDI  R30,LOW(0)
 	STD  Y+0,R30
 	STD  Y+0+1,R30
-; 0000 003A             }
-; 0000 003B         }
+; 0000 003B             }
+; 0000 003C 
+; 0000 003D         }
 _0x9:
-; 0000 003C         if (PINB.2==1)
+; 0000 003E         if (PINB.2==1)
 _0x8:
 	SBIS 0x16,2
 	RJMP _0xA
-; 0000 003D         {
-; 0000 003E             valtemp--;
+; 0000 003F         {
+; 0000 0040             delay_ms(200);
+	CALL SUBOPT_0x2
+; 0000 0041             valtemp--;
 	LDD  R30,Y+2
 	LDD  R31,Y+2+1
 	SBIW R30,1
 	STD  Y+2,R30
 	STD  Y+2+1,R31
-; 0000 003F         }
-; 0000 0040         if (PINB.3==1)
+; 0000 0042             if (valtemp==-1)
+	LDD  R26,Y+2
+	LDD  R27,Y+2+1
+	CPI  R26,LOW(0xFFFF)
+	LDI  R30,HIGH(0xFFFF)
+	CPC  R27,R30
+	BRNE _0xB
+; 0000 0043             {
+; 0000 0044                 valtemp=70;
+	LDI  R30,LOW(70)
+	LDI  R31,HIGH(70)
+	STD  Y+2,R30
+	STD  Y+2+1,R31
+; 0000 0045             }
+; 0000 0046         }
+_0xB:
+; 0000 0047         if (PINB.3==1)
 _0xA:
 	SBIS 0x16,3
-	RJMP _0xB
-; 0000 0041         {
-; 0000 0042             valhumidity--;
+	RJMP _0xC
+; 0000 0048         {
+; 0000 0049             delay_ms(200);
+	CALL SUBOPT_0x2
+; 0000 004A             valhumidity--;
 	LD   R30,Y
 	LDD  R31,Y+1
 	SBIW R30,1
 	ST   Y,R30
 	STD  Y+1,R31
-; 0000 0043         }
-; 0000 0044     }
-_0xB:
-	RJMP _0x3
-; 0000 0045 }
+; 0000 004B             if (valhumidity==-1)
+	LD   R26,Y
+	LDD  R27,Y+1
+	CPI  R26,LOW(0xFFFF)
+	LDI  R30,HIGH(0xFFFF)
+	CPC  R27,R30
+	BRNE _0xD
+; 0000 004C             {
+; 0000 004D                 valhumidity=70;
+	LDI  R30,LOW(70)
+	LDI  R31,HIGH(70)
+	ST   Y,R30
+	STD  Y+1,R31
+; 0000 004E             }
+; 0000 004F         }
+_0xD:
+; 0000 0050         if (humidity<valhumidity)
 _0xC:
-	RJMP _0xC
+	LD   R30,Y
+	LDD  R31,Y+1
+	CP   R18,R30
+	CPC  R19,R31
+	BRGE _0xE
+; 0000 0051         {
+; 0000 0052             PORTC.0=1;
+	SBI  0x15,0
+; 0000 0053         }
+; 0000 0054         else {PORTC.0=0;}
+	RJMP _0x11
+_0xE:
+	CBI  0x15,0
+_0x11:
+; 0000 0055         if (temp<valtemp)
+	LDD  R30,Y+2
+	LDD  R31,Y+2+1
+	CP   R16,R30
+	CPC  R17,R31
+	BRGE _0x14
+; 0000 0056         {
+; 0000 0057             PORTC.1=1;
+	SBI  0x15,1
+; 0000 0058         }
+; 0000 0059         else {PORTC.1=0;}
+	RJMP _0x17
+_0x14:
+	CBI  0x15,1
+_0x17:
+; 0000 005A     }
+	RJMP _0x3
+; 0000 005B }
+_0x1A:
+	RJMP _0x1A
 ; .FEND
 ;
 ;// read_dht11 functions
 ;// read_dht11 functions
 ;int read_dht11(int *temp,int *humidity)
-; 0000 004A {
+; 0000 0060 {
 _read_dht11:
 ; .FSTART _read_dht11
-; 0000 004B     unsigned char bytes[5];
-; 0000 004C     unsigned char sum;
-; 0000 004D     unsigned int bitcount=8;
-; 0000 004E     unsigned int loopcount=0;
-; 0000 004F     unsigned int byteid=0;
-; 0000 0050     int i=0;
-; 0000 0051     // EMPTY BUFFER
-; 0000 0052     for (i=0; i< 5; i++) bytes[i] = 0;
+; 0000 0061     unsigned char bytes[5];
+; 0000 0062     unsigned char sum;
+; 0000 0063     unsigned int bitcount=8;
+; 0000 0064     unsigned int loopcount=0;
+; 0000 0065     unsigned int byteid=0;
+; 0000 0066     int i=0;
+; 0000 0067     // EMPTY BUFFER
+; 0000 0068     for (i=0; i< 5; i++) bytes[i] = 0;
 	ST   -Y,R27
 	ST   -Y,R26
 	SBIW R28,9
@@ -1455,11 +1522,11 @@ _read_dht11:
 	LDI  R30,LOW(0)
 	STD  Y+6,R30
 	STD  Y+6+1,R30
-_0xE:
+_0x1C:
 	LDD  R26,Y+6
 	LDD  R27,Y+6+1
 	SBIW R26,5
-	BRGE _0xF
+	BRGE _0x1D
 	LDD  R30,Y+6
 	LDD  R31,Y+6+1
 	MOVW R26,R28
@@ -1473,99 +1540,99 @@ _0xE:
 	ADIW R30,1
 	STD  Y+6,R30
 	STD  Y+6+1,R31
-	RJMP _0xE
-_0xF:
-; 0000 0054 DDRA|=(1<<1       );
+	RJMP _0x1C
+_0x1D:
+; 0000 006A DDRA|=(1<<1       );
 	SBI  0x1A,1
-; 0000 0055     DHT11_LOW();
+; 0000 006B     DHT11_LOW();
 	CBI  0x1B,1
-; 0000 0056     delay_ms(20);
+; 0000 006C     delay_ms(20);
 	LDI  R26,LOW(20)
 	LDI  R27,0
 	CALL _delay_ms
-; 0000 0057     DHT11_HIGH();
+; 0000 006D     DHT11_HIGH();
 	SBI  0x1B,1
-; 0000 0058     delay_us(2);
+; 0000 006E     delay_us(2);
 	__DELAY_USB 5
-; 0000 0059     DHT11_INPUT_MODE();
+; 0000 006F     DHT11_INPUT_MODE();
 	CBI  0x1A,1
-; 0000 005A     DHT11_LOW();
+; 0000 0070     DHT11_LOW();
 	CBI  0x1B,1
-; 0000 005B     loopcount=0;
+; 0000 0071     loopcount=0;
 	__GETWRN 20,21,0
-; 0000 005C     while(!(DHT11_PINPORT&(1<<DHT11_PIN)))
-_0x10:
+; 0000 0072     while(!(DHT11_PINPORT&(1<<DHT11_PIN)))
+_0x1E:
 	SBIC 0x19,1
-	RJMP _0x12
-; 0000 005D     { //pin is low
-; 0000 005E         delay_us(40);
+	RJMP _0x20
+; 0000 0073     { //pin is low
+; 0000 0074         delay_us(40);
 	__DELAY_USB 107
-; 0000 005F         loopcount++;
+; 0000 0075         loopcount++;
 	__ADDWRN 20,21,1
-; 0000 0060     }
-	RJMP _0x10
-_0x12:
-; 0000 0061     if (loopcount>80) return DHTLIB_ERROR_TIMEOUT;
+; 0000 0076     }
+	RJMP _0x1E
+_0x20:
+; 0000 0077     if (loopcount>80) return DHTLIB_ERROR_TIMEOUT;
 	__CPWRN 20,21,81
-	BRLO _0x13
+	BRLO _0x21
 	LDI  R30,LOW(65534)
 	LDI  R31,HIGH(65534)
 	RJMP _0x2080003
-; 0000 0062     loopcount=0;
-_0x13:
+; 0000 0078     loopcount=0;
+_0x21:
 	__GETWRN 20,21,0
-; 0000 0063     while((DHT11_PINPORT&(1<<DHT11_PIN)))
-_0x14:
+; 0000 0079     while((DHT11_PINPORT&(1<<DHT11_PIN)))
+_0x22:
 	SBIS 0x19,1
-	RJMP _0x16
-; 0000 0064     { //pin is high
-; 0000 0065         delay_us(1);
+	RJMP _0x24
+; 0000 007A     { //pin is high
+; 0000 007B         delay_us(1);
 	__DELAY_USB 3
-; 0000 0066         loopcount++;
+; 0000 007C         loopcount++;
 	__ADDWRN 20,21,1
-; 0000 0067     }
-	RJMP _0x14
-_0x16:
-; 0000 0068      if (loopcount>80) return DHTLIB_ERROR_TIMEOUT;
+; 0000 007D     }
+	RJMP _0x22
+_0x24:
+; 0000 007E      if (loopcount>80) return DHTLIB_ERROR_TIMEOUT;
 	__CPWRN 20,21,81
-	BRLO _0x17
+	BRLO _0x25
 	LDI  R30,LOW(65534)
 	LDI  R31,HIGH(65534)
 	RJMP _0x2080003
-; 0000 0069     for(i=0;i<40;i++)
-_0x17:
+; 0000 007F     for(i=0;i<40;i++)
+_0x25:
 	LDI  R30,LOW(0)
 	STD  Y+6,R30
 	STD  Y+6+1,R30
-_0x19:
+_0x27:
 	LDD  R26,Y+6
 	LDD  R27,Y+6+1
 	SBIW R26,40
-	BRGE _0x1A
-; 0000 006A     {
-; 0000 006B         loopcount=0;
+	BRGE _0x28
+; 0000 0080     {
+; 0000 0081         loopcount=0;
 	__GETWRN 20,21,0
-; 0000 006C         while(!(DHT11_PINPORT&(1<<DHT11_PIN))){}
-_0x1B:
+; 0000 0082         while(!(DHT11_PINPORT&(1<<DHT11_PIN))){}
+_0x29:
 	SBIS 0x19,1
-	RJMP _0x1B
-; 0000 006D         while((DHT11_PINPORT&(1<<DHT11_PIN)) && loopcount<100){loopcount++;delay_us(1);}
-_0x1E:
+	RJMP _0x29
+; 0000 0083         while((DHT11_PINPORT&(1<<DHT11_PIN)) && loopcount<100){loopcount++;delay_us(1);}
+_0x2C:
 	SBIS 0x19,1
-	RJMP _0x21
+	RJMP _0x2F
 	__CPWRN 20,21,100
-	BRLO _0x22
-_0x21:
-	RJMP _0x20
-_0x22:
+	BRLO _0x30
+_0x2F:
+	RJMP _0x2E
+_0x30:
 	__ADDWRN 20,21,1
 	__DELAY_USB 3
-	RJMP _0x1E
-_0x20:
-; 0000 006E         if(loopcount>15)
+	RJMP _0x2C
+_0x2E:
+; 0000 0084         if(loopcount>15)
 	__CPWRN 20,21,16
-	BRLO _0x23
-; 0000 006F         bytes[byteid] |= (1 << bitcount);
+	BRLO _0x31
+; 0000 0085         bytes[byteid] |= (1 << bitcount);
 	LDD  R30,Y+8
 	LDD  R31,Y+8+1
 	MOVW R26,R28
@@ -1580,49 +1647,49 @@ _0x20:
 	OR   R30,R1
 	MOVW R26,R22
 	ST   X,R30
-; 0000 0070         if (bitcount == 0)   // next byte?
-_0x23:
+; 0000 0086         if (bitcount == 0)   // next byte?
+_0x31:
 	MOV  R0,R18
 	OR   R0,R19
-	BRNE _0x24
-; 0000 0071         {
-; 0000 0072             bitcount = 7;    // restart at MSB
+	BRNE _0x32
+; 0000 0087         {
+; 0000 0088             bitcount = 7;    // restart at MSB
 	__GETWRN 18,19,7
-; 0000 0073             byteid++;      // next byte!
+; 0000 0089             byteid++;      // next byte!
 	LDD  R30,Y+8
 	LDD  R31,Y+8+1
 	ADIW R30,1
 	STD  Y+8,R30
 	STD  Y+8+1,R31
-; 0000 0074         }
-; 0000 0075         else bitcount--;
-	RJMP _0x25
-_0x24:
+; 0000 008A         }
+; 0000 008B         else bitcount--;
+	RJMP _0x33
+_0x32:
 	__SUBWRN 18,19,1
-; 0000 0076     }
-_0x25:
+; 0000 008C     }
+_0x33:
 	LDD  R30,Y+6
 	LDD  R31,Y+6+1
 	ADIW R30,1
 	STD  Y+6,R30
 	STD  Y+6+1,R31
-	RJMP _0x19
-_0x1A:
-; 0000 0077     *humidity    = bytes[0];
+	RJMP _0x27
+_0x28:
+; 0000 008D     *humidity    = bytes[0];
 	LDD  R30,Y+10
 	LDD  R26,Y+15
 	LDD  R27,Y+15+1
 	LDI  R31,0
 	ST   X+,R30
 	ST   X,R31
-; 0000 0078     *temp = bytes[2];
+; 0000 008E     *temp = bytes[2];
 	LDD  R30,Y+12
 	LDD  R26,Y+17
 	LDD  R27,Y+17+1
 	LDI  R31,0
 	ST   X+,R30
 	ST   X,R31
-; 0000 0079     sum = (bytes[0] + bytes[1]+ bytes[2]+ bytes[3])&0xff;
+; 0000 008F     sum = (bytes[0] + bytes[1]+ bytes[2]+ bytes[3])&0xff;
 	LDD  R30,Y+11
 	LDD  R26,Y+10
 	ADD  R30,R26
@@ -1632,22 +1699,22 @@ _0x1A:
 	ADD  R26,R30
 	MOV  R30,R26
 	MOV  R17,R30
-; 0000 007A     if (bytes[4] != sum) return DHTLIB_ERROR_CHECKSUM;
+; 0000 0090     if (bytes[4] != sum) return DHTLIB_ERROR_CHECKSUM;
 	LDD  R26,Y+14
 	CP   R17,R26
-	BREQ _0x26
+	BREQ _0x34
 	LDI  R30,LOW(65535)
 	LDI  R31,HIGH(65535)
 	RJMP _0x2080003
-; 0000 007B     return DHTLIB_OK;
-_0x26:
+; 0000 0091     return DHTLIB_OK;
+_0x34:
 	LDI  R30,LOW(0)
 	LDI  R31,HIGH(0)
 _0x2080003:
 	CALL __LOADLOCR6
 	ADIW R28,19
 	RET
-; 0000 007C }
+; 0000 0092 }
 ; .FEND
 	#ifndef __SLEEP_DEFINED__
 	#define __SLEEP_DEFINED__
@@ -1738,11 +1805,11 @@ _lcd_gotoxy:
 _lcd_clear:
 ; .FSTART _lcd_clear
 	LDI  R26,LOW(2)
-	CALL SUBOPT_0x2
+	CALL SUBOPT_0x3
 	LDI  R26,LOW(12)
 	RCALL __lcd_write_data
 	LDI  R26,LOW(1)
-	CALL SUBOPT_0x2
+	CALL SUBOPT_0x3
 	LDI  R30,LOW(0)
 	MOV  R4,R30
 	MOV  R5,R30
@@ -1820,9 +1887,9 @@ _lcd_init:
 	LDI  R26,LOW(20)
 	LDI  R27,0
 	CALL _delay_ms
-	CALL SUBOPT_0x3
-	CALL SUBOPT_0x3
-	CALL SUBOPT_0x3
+	CALL SUBOPT_0x4
+	CALL SUBOPT_0x4
+	CALL SUBOPT_0x4
 	LDI  R26,LOW(32)
 	RCALL __lcd_write_nibble_G100
 	__DELAY_USW 200
@@ -1948,7 +2015,7 @@ _0x2020016:
 	LDI  R17,LOW(1)
 	RJMP _0x202001E
 _0x202001D:
-	CALL SUBOPT_0x4
+	CALL SUBOPT_0x5
 _0x202001E:
 	RJMP _0x202001B
 _0x202001C:
@@ -1956,7 +2023,7 @@ _0x202001C:
 	BRNE _0x202001F
 	CPI  R18,37
 	BRNE _0x2020020
-	CALL SUBOPT_0x4
+	CALL SUBOPT_0x5
 	RJMP _0x20200CC
 _0x2020020:
 	LDI  R17,LOW(2)
@@ -2013,26 +2080,26 @@ _0x2020029:
 	MOV  R30,R18
 	CPI  R30,LOW(0x63)
 	BRNE _0x202002F
-	CALL SUBOPT_0x5
+	CALL SUBOPT_0x6
 	LDD  R30,Y+16
 	LDD  R31,Y+16+1
 	LDD  R26,Z+4
 	ST   -Y,R26
-	CALL SUBOPT_0x6
+	CALL SUBOPT_0x7
 	RJMP _0x2020030
 _0x202002F:
 	CPI  R30,LOW(0x73)
 	BRNE _0x2020032
-	CALL SUBOPT_0x5
-	CALL SUBOPT_0x7
+	CALL SUBOPT_0x6
+	CALL SUBOPT_0x8
 	CALL _strlen
 	MOV  R17,R30
 	RJMP _0x2020033
 _0x2020032:
 	CPI  R30,LOW(0x70)
 	BRNE _0x2020035
-	CALL SUBOPT_0x5
-	CALL SUBOPT_0x7
+	CALL SUBOPT_0x6
+	CALL SUBOPT_0x8
 	CALL _strlenf
 	MOV  R17,R30
 	ORI  R16,LOW(8)
@@ -2077,8 +2144,8 @@ _0x2020040:
 _0x202003D:
 	SBRS R16,2
 	RJMP _0x2020042
-	CALL SUBOPT_0x5
-	CALL SUBOPT_0x8
+	CALL SUBOPT_0x6
+	CALL SUBOPT_0x9
 	LDD  R26,Y+11
 	TST  R26
 	BRPL _0x2020043
@@ -2098,8 +2165,8 @@ _0x2020044:
 _0x2020045:
 	RJMP _0x2020046
 _0x2020042:
-	CALL SUBOPT_0x5
-	CALL SUBOPT_0x8
+	CALL SUBOPT_0x6
+	CALL SUBOPT_0x9
 _0x2020046:
 _0x2020036:
 	SBRC R16,0
@@ -2122,7 +2189,7 @@ _0x202004D:
 _0x202004B:
 	LDI  R18,LOW(32)
 _0x202004E:
-	CALL SUBOPT_0x4
+	CALL SUBOPT_0x5
 	SUBI R21,LOW(1)
 	RJMP _0x2020048
 _0x202004A:
@@ -2148,7 +2215,7 @@ _0x2020053:
 	STD  Y+6,R26
 	STD  Y+6+1,R27
 _0x2020054:
-	CALL SUBOPT_0x4
+	CALL SUBOPT_0x5
 	CPI  R21,0
 	BREQ _0x2020055
 	SUBI R21,LOW(1)
@@ -2227,7 +2294,7 @@ _0x20200CD:
 	RJMP _0x202006A
 	ANDI R16,LOW(251)
 	ST   -Y,R20
-	CALL SUBOPT_0x6
+	CALL SUBOPT_0x7
 	CPI  R21,0
 	BREQ _0x202006B
 	SUBI R21,LOW(1)
@@ -2235,7 +2302,7 @@ _0x202006B:
 _0x202006A:
 _0x2020069:
 _0x2020061:
-	CALL SUBOPT_0x4
+	CALL SUBOPT_0x5
 	CPI  R21,0
 	BREQ _0x202006C
 	SUBI R21,LOW(1)
@@ -2257,7 +2324,7 @@ _0x202006E:
 	SUBI R21,LOW(1)
 	LDI  R30,LOW(32)
 	ST   -Y,R30
-	CALL SUBOPT_0x6
+	CALL SUBOPT_0x7
 	RJMP _0x202006E
 _0x2020070:
 _0x202006D:
@@ -2281,7 +2348,7 @@ _sprintf:
 	MOV  R15,R24
 	SBIW R28,6
 	CALL __SAVELOCR4
-	CALL SUBOPT_0x9
+	CALL SUBOPT_0xA
 	SBIW R30,0
 	BRNE _0x2020072
 	LDI  R30,LOW(65535)
@@ -2292,7 +2359,7 @@ _0x2020072:
 	ADIW R26,6
 	CALL __ADDW2R15
 	MOVW R16,R26
-	CALL SUBOPT_0x9
+	CALL SUBOPT_0xA
 	STD  Y+6,R30
 	STD  Y+6+1,R31
 	LDI  R30,LOW(0)
@@ -2385,22 +2452,28 @@ SUBOPT_0x1:
 	CALL __PUTPARD1
 	RET
 
-;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:1 WORDS
+;OPTIMIZER ADDED SUBROUTINE, CALLED 4 TIMES, CODE SIZE REDUCTION:3 WORDS
 SUBOPT_0x2:
+	LDI  R26,LOW(200)
+	LDI  R27,0
+	JMP  _delay_ms
+
+;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:1 WORDS
+SUBOPT_0x3:
 	CALL __lcd_write_data
 	LDI  R26,LOW(3)
 	LDI  R27,0
 	JMP  _delay_ms
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:7 WORDS
-SUBOPT_0x3:
+SUBOPT_0x4:
 	LDI  R26,LOW(48)
 	CALL __lcd_write_nibble_G100
 	__DELAY_USW 200
 	RET
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 5 TIMES, CODE SIZE REDUCTION:13 WORDS
-SUBOPT_0x4:
+SUBOPT_0x5:
 	ST   -Y,R18
 	LDD  R26,Y+13
 	LDD  R27,Y+13+1
@@ -2410,7 +2483,7 @@ SUBOPT_0x4:
 	RET
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 5 TIMES, CODE SIZE REDUCTION:9 WORDS
-SUBOPT_0x5:
+SUBOPT_0x6:
 	LDD  R30,Y+16
 	LDD  R31,Y+16+1
 	SBIW R30,4
@@ -2419,7 +2492,7 @@ SUBOPT_0x5:
 	RET
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 3 TIMES, CODE SIZE REDUCTION:3 WORDS
-SUBOPT_0x6:
+SUBOPT_0x7:
 	LDD  R26,Y+13
 	LDD  R27,Y+13+1
 	LDD  R30,Y+15
@@ -2428,7 +2501,7 @@ SUBOPT_0x6:
 	RET
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:4 WORDS
-SUBOPT_0x7:
+SUBOPT_0x8:
 	LDD  R26,Y+16
 	LDD  R27,Y+16+1
 	ADIW R26,4
@@ -2440,7 +2513,7 @@ SUBOPT_0x7:
 	RET
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:2 WORDS
-SUBOPT_0x8:
+SUBOPT_0x9:
 	LDD  R26,Y+16
 	LDD  R27,Y+16+1
 	ADIW R26,4
@@ -2450,7 +2523,7 @@ SUBOPT_0x8:
 	RET
 
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:1 WORDS
-SUBOPT_0x9:
+SUBOPT_0xA:
 	MOVW R26,R28
 	ADIW R26,12
 	CALL __ADDW2R15

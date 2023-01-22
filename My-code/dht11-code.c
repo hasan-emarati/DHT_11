@@ -26,9 +26,8 @@ int read_dht11(int *temp,int *humidity);
 void main(void)
 {
     char lcd_buff[40];
-    int temp=0 , humidity=0 , status=0 , valtemp=0 , valhumidity=0 ;  
+    int temp=0 , humidity=0 , status=0 , valtemp=0 , valhumidity=0 ; 
     DDRC=0XFF;
-    PORTC=0XFF;
     DDRB=0X00;
 
     lcd_init(16);
@@ -43,6 +42,7 @@ void main(void)
         lcd_gotoxy(0,1); 
         if (PINB.0==1)
         {
+            delay_ms(200);
             valtemp++;   
             if (valtemp==40)
             {
@@ -51,20 +51,42 @@ void main(void)
         }
         if (PINB.1==1)
         {
+            delay_ms(200);
             valhumidity++;
             if (valhumidity==70)
             {
                 valhumidity=0;
             }
+            
         }
         if (PINB.2==1)
         {
-            valtemp--;   
+            delay_ms(200);
+            valtemp--;  
+            if (valtemp==-1)
+            {
+                valtemp=70;
+            } 
         }
         if (PINB.3==1)
         {
+            delay_ms(200);
             valhumidity--;
+            if (valhumidity==-1)
+            {
+                valhumidity=70;
+            }
         }
+        if (humidity<valhumidity)
+        {
+            PORTC.0=1;
+        }
+        else {PORTC.0=0;}
+        if (temp<valtemp)
+        {
+            PORTC.1=1;
+        }
+        else {PORTC.1=0;}
     }
 }
 
